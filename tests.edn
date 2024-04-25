@@ -1,0 +1,5 @@
+#kaocha/v1
+{:tests [{:id :unit
+          :source-paths ["src/florestou"]
+          :test-paths ["test/florestou"]
+          :ns-patterns ["-test$"]}]}

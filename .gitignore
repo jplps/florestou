@@ -1,0 +1,46 @@
+# Compiled output
+/target
+/classes
+/checkouts
+/resources/public/js
+/resources/public/css
+pom.xml
+pom.xml.asc
+
+# Clojure CLI tools
+.cpcache/
+
+# Leiningen
+/.lein-*
+/.nrepl-port
+/.repl
+
+# Editors
+*.iml
+*.ipr
+*.iws
+.idea/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+
+# Logs
+*.log
+
+# Environment variables
+.env
+
+# Dependencies
+/node_modules
+
+# Test output
+/out
+
+# Other
+.nrepl-history
+.clj-kondo/.cache/
+.lsp/.cache/
+.calva/output-window/
