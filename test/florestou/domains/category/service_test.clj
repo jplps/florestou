@@ -7,7 +7,7 @@
 
 (use-fixtures :once db-fixture)
 
-(deftest category-service
+(deftest category-crud-service
   (with-system [system (test-system-map)]
     (let [service (:category-service system)]
       (testing "creating and retrieving a category"

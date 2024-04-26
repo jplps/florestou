@@ -1,15 +1,15 @@
 (ns florestou.domains.category.service
   (:require [florestou.db.helpers :refer [insert! get-by-id! execute! update! delete!]]))
 
-(defprotocol ServiceProtocol
+(defprotocol CSProtocol
   (get-all-categories! [this])
-  (create-category! [this category])
+  (create-category! [this data])
   (get-category-by-id! [this id])
-  (update-category-by-id! [this id category])
+  (update-category-by-id! [this id data])
   (delete-category-by-id! [this id]))
 
 (defrecord CategoryService []
-  ServiceProtocol
+  CSProtocol
   (get-category-by-id! [_ id]
     (get-by-id! :categories id))
 

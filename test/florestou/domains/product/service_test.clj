@@ -3,17 +3,17 @@
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [florestou.test-helpers :refer [with-system test-system-map]]
             [florestou.domains.product.service :as ps]
+            [florestou.domains.category.service :as cs]
             [florestou.containers.postgres :refer [db-fixture clear-db]]))
 
 (use-fixtures :once db-fixture)
 
-(deftest product-service
+(deftest product-crud-service
   (with-system [system (test-system-map)]
     (let [service (:product-service system)]
       (testing "creating and retrieving a product"
         (let [_ (clear-db)
-              test-product {:name "Test Product" :price 9.99}
-              created-product (ps/create-product! service test-product)
+              created-product (ps/create-product! service {:name "Test Product" :price 9.99})
               retrieved-product (ps/get-product-by-id! service (:id created-product))]
           (is (some? (:id created-product)))
           (is (= (:name retrieved-product) (:name created-product)))))
@@ -29,8 +29,7 @@
 
       (testing "updating a product"
         (let [_ (clear-db)
-              test-product {:name "Test Product" :price 9.99}
-              created-product (ps/create-product! service test-product)
+              created-product (ps/create-product! service {:name "Test Product" :price 9.99})
               updated-product-data {:name "Updated Product"}
               _ (ps/update-product-by-id! service (:id created-product) updated-product-data)
               retrieved-product (ps/get-product-by-id! service (:id created-product))]
@@ -39,8 +38,7 @@
 
       (testing "deleting a product"
         (let [_ (clear-db)
-              test-product {:name "Test Product" :price 9.99}
-              created-product (ps/create-product! service test-product)
+              created-product (ps/create-product! service {:name "Test Product" :price 9.99})
               _ (ps/delete-product-by-id! service (:id created-product))
               retrieved-product (ps/get-product-by-id! service (:id created-product))]
           (is (nil? retrieved-product))))
@@ -64,3 +62,35 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Product not found"
                                 (ps/delete-product-by-id! service non-existent-id))))))))
+
+(deftest product-category-crud-test
+  (with-system [system (test-system-map)]
+    (let [product-service (:product-service system)
+          category-service (:category-service system)]
+      (testing "creating a product-category association"
+        (let [_ (clear-db)
+              product-id (:id (ps/create-product! product-service {:name "Test Product" :price 9.99}))
+              category-id (:id (cs/create-category! category-service {:name "Test Category"}))
+              _ (ps/create-product-category! product-service product-id category-id)
+              categories (ps/get-categories-by-product-id! product-service product-id)]
+          (is (= 1 (count categories))))
+
+        (testing "deleting a product-category association"
+          (let [_ (clear-db)
+                product-id (:id (ps/create-product! product-service {:name "Test Product" :price 9.99}))
+                category-id (:id (cs/create-category! category-service {:name "Test Category"}))
+                _ (ps/create-product-category! product-service product-id category-id)
+                _ (ps/delete-product-category! product-service product-id category-id)
+                categories (ps/get-categories-by-product-id! product-service product-id)]
+            (is (empty? categories))))
+
+        (testing "getting categories by product ID"
+          (let [_ (clear-db)
+                product-id (:id (ps/create-product! product-service {:name "Test Product" :price 9.99}))
+                category-ids [(:id (cs/create-category! category-service {:name "Test Category 0"}))
+                              (:id (cs/create-category! category-service {:name "Test Category 1"}))
+                              (:id (cs/create-category! category-service {:name "Test Category 2"}))]
+                _ (doseq [category-id category-ids]
+                    (ps/create-product-category! product-service product-id category-id))
+                categories (ps/get-categories-by-product-id! product-service product-id)]
+            (is (= (count category-ids) (count categories)))))))))

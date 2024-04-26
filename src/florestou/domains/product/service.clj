@@ -1,17 +1,18 @@
 (ns florestou.domains.product.service
   (:require [florestou.db.helpers :refer [get-by-id! execute! insert! update! delete!]]))
 
-(defprotocol ServiceProtocol
+(defprotocol PSProtocol
   (get-all-products! [this])
-  (create-product! [this product])
+  (create-product! [this data])
   (get-product-by-id! [this id])
-  (update-product-by-id! [this id product])
+  (update-product-by-id! [this id data])
   (delete-product-by-id! [this id])
   (create-product-category! [this product-id category-id])
-  (get-product-categories! [this product-id]))
+  (delete-product-category! [this product-id category-id])
+  (get-categories-by-product-id! [this id]))
 
 (defrecord ProductRepository []
-  ServiceProtocol
+  PSProtocol
   (get-product-by-id! [_ id]
     (get-by-id! :products id))
 
@@ -36,10 +37,13 @@
   (create-product-category! [_ product-id category-id]
     (insert! :product_categories {:product_id product-id :category_id category-id}))
 
-  (get-product-categories! [_ product-id]
+  (delete-product-category! [_ product-id category-id]
+    (delete! :product_categories {:product_id product-id :category_id category-id}))
+
+  (get-categories-by-product-id! [_ id]
     (execute! ["SELECT c.* FROM categories c
                 JOIN product_categories pc ON c.id = pc.category_id
-                WHERE pc.product_id = ?" product-id])))
+                WHERE pc.product_id = ?" id])))
 
 (defn new-service []
   (->ProductRepository))
