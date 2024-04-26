@@ -1,7 +1,7 @@
 (ns florestou.db.core
   (:require [com.stuartsierra.component :as component]
             [next.jdbc.connection :as connection]
-            #_[florestou.db.migrations :refer [run-migrations]])
+            [florestou.db.migrations :refer [run-migrations]])
   (:import [com.zaxxer.hikari HikariDataSource]))
 
 (defrecord Database [conn db-spec]
@@ -10,7 +10,7 @@
     (if (:conn this)
       this
       (let [conn (connection/->pool HikariDataSource db-spec)]
-        #_(run-migrations)
+        (run-migrations)
         (assoc this :conn conn))))
 
   (stop [this]

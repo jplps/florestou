@@ -1,25 +1,55 @@
 (ns florestou.db.helpers
   (:require [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
+            [clojure.walk :as walk]
             [florestou.helpers :refer [load-config]]))
 
-;; Datasource object created from the loaded configuration.
 (defonce datasource (jdbc/get-datasource (:db-spec (load-config))))
 
-(defn insert!
-  "Inserts data into the specified table. Returns the number of affected rows."
-  [table data]
-  (sql/insert! datasource table data))
+(defn transform-value [value]
+  (cond
+    (and (vector? value) (= (first value) 'inst))
+    (java.util.Date/from (java.time.Instant/parse (second value)))
 
-(defn query!
-  "Executes the SQL query and returns the result set as a vector of maps."
-  [sql-params]
-  (let [results (jdbc/execute! datasource sql-params)]
-    (mapv (fn [result]
-            (into {} (map (fn [[k v]] [(keyword (name k)) v]) result)))
-          results)))
+    (and (keyword? value) (namespace value))
+    (keyword (name value))
+
+    :else value))
+
+(defn transform-map [m]
+  (walk/postwalk
+   (fn [x]
+     (if (map? x)
+       (into {} (map (fn [[k v]] [(transform-value k) (transform-value v)]) x))
+       x))
+   m))
+
+(defn- transform-result [result]
+  (cond
+    (map? result) (transform-map result)
+    (vector? result) (mapv transform-map result)
+    :else result))
+
+(defn insert!
+  [table key-map]
+  (transform-result (sql/insert! datasource table key-map)))
+
+(defn update!
+  [table key-map where-params]
+  (transform-map (sql/update! datasource table key-map where-params)))
+
+(defn delete!
+  [table where-params]
+  (transform-result (sql/delete! datasource table where-params)))
+
+(defn get-by-id!
+  [table primary-key]
+  (transform-result (sql/get-by-id datasource table primary-key)))
+
+(defn find-by-keys!
+  [table key-map]
+  (transform-result (sql/find-by-keys datasource table key-map)))
 
 (defn execute!
-  "Executes the SQL statement. Returns the number of affected rows."
   [sql-params]
-  (jdbc/execute! datasource sql-params))
+  (transform-result (jdbc/execute! datasource sql-params)))
