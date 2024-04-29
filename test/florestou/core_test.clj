@@ -4,10 +4,10 @@
             [com.stuartsierra.component :as component]
             [florestou.helpers :refer [load-config]]
             [florestou.test-helpers :refer [with-system test-system-map]]
-            [florestou.containers.postgres :refer [db-fixture]]
+            [florestou.containers.postgres :refer [pg-fixture]]
             [florestou.core :refer [base-system system-map]]))
 
-(use-fixtures :once db-fixture)
+(use-fixtures :once pg-fixture)
 
 (deftest test-load-config
   (testing "load-config loads the configuration from config.edn"
@@ -23,7 +23,8 @@
         (is (instance? com.stuartsierra.component.SystemMap system))
         (is (contains? system :db))
         (is (contains? system :category-service))
-        (is (contains? system :product-service))))))
+        (is (contains? system :product-service))
+        (is (contains? system :http-server))))))
 
 (deftest test-base-system
   (testing "base-system returns a valid system map"
@@ -31,7 +32,8 @@
       (is (instance? com.stuartsierra.component.SystemMap system))
       (is (contains? system :db))
       (is (contains? system :category-service))
-      (is (contains? system :product-service)))))
+      (is (contains? system :product-service))
+      (is (contains? system :http-server)))))
 
 (deftest full-system-map
   (with-system [system (test-system-map)]
@@ -42,4 +44,6 @@
       (is (contains? system :category-service))
       (is (satisfies? component/Lifecycle (:category-service system)))
       (is (contains? system :product-service))
-      (is (satisfies? component/Lifecycle (:product-service system))))))
+      (is (satisfies? component/Lifecycle (:product-service system)))
+      (is (contains? system :http-server))
+      (is (satisfies? component/Lifecycle (:http-server system))))))

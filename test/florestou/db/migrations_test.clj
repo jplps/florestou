@@ -1,10 +1,10 @@
 (ns florestou.db.migrations-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
-            [florestou.containers.postgres :refer [db-fixture  *test-datasource*]]
+            [florestou.containers.postgres :refer [pg-fixture  *test-datasource*]]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]))
 
-(use-fixtures :once db-fixture)
+(use-fixtures :once pg-fixture)
 
 (deftest migration-test
   (testing "insert sample data"

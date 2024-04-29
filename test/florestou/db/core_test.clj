@@ -1,10 +1,10 @@
 (ns florestou.db.core-test
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [florestou.db.core :refer [new-database]]
-            [florestou.containers.postgres :refer [db-fixture *test-spec*]]
+            [florestou.containers.postgres :refer [pg-fixture *test-spec*]]
             [com.stuartsierra.component :as component]))
 
-(use-fixtures :once db-fixture)
+(use-fixtures :once pg-fixture)
 
 (deftest database-lifecycle-test
   (testing "database component lifecycle"
