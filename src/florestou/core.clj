@@ -12,7 +12,7 @@
    :db (db/new-database (:db-spec config))
    :product-service (component/using (ps/new-service) [:db])
    :category-service (component/using (cs/new-service) [:db])
-   :http-server (component/using (hs/new-server (:port config)) [:product-service :category-service])))
+   :http-server (component/using (hs/new-server (-> config :http :port)) [:product-service :category-service])))
 
 (defn base-system []
   (system-map (load-config)))
