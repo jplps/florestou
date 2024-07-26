@@ -1,6 +1,10 @@
 (ns florestou.http.pages
-  (:require [hiccup.page :as page]
-            [hiccup.core :as h]))
+  (:require [hiccup.core :refer [html]]
+            [hiccup.page :refer [html5]]))
+
+(def company "Florestou")
+(def email "info@florestou.com.br")
+(def phone "+5548991679817")
 
 (def reset-css
   "html, body, div, span, applet, object, iframe,
@@ -40,6 +44,7 @@
     h3 { font-size: 108%; }
     ol, ul { list-style: none; }
     a {
+      cursor: pointer;
       color: inherit;
       text-decoration: none;
     }
@@ -55,18 +60,18 @@
     }")
 
 (defn page-template [main]
-  (page/html5
+  (html5
    {:lang "en"}
    [:head
     [:meta {:charset "UTF-8"}]
     [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-    [:title "Florestou"]
+    [:title company]
     [:style reset-css]
     [:script {:src "https://unpkg.com/htmx.org@1.7.0"}]]
    [:body
     [:header
      [:a {:href "/"}
-      [:img {:src "/path/to/logo.png" :alt "Florestou Logo"}]]
+      [:img {:src "/assets/img/logo.png" :alt (str company " logo")}]]
      [:nav
       [:ul
        [:li [:a {:href "/products"} "Products"]]]]]
@@ -75,44 +80,84 @@
 
     [:footer
      [:ul
-      [:li [:a {:href "mailto:info@florestou.com.br"} "info@florestou.com.br"]]
-      [:li [:a {:href "tel:+5548991679817"} "+55 (48) 991679817"]]]]]))
+      [:li [:a {:href (str "mailto:" email)} email]]
+      [:li [:a {:href (str "tel:" phone)} phone]]]]]))
 
 (def index
   (page-template
    [:main
-    [:h1 "Florestou"]
-    [:p "Discover our products."]
-
-    [:p "Products: Soaps, Shampoos, Creams, Gels, Lotions, Butters, Deodorants, Functional Oils"]
-    [:p "Categories: Face, Body, Hair"]
-    [:p "Characteristics: Oily, Dry, Mist, Liquid, Solid, Gel, Paste"]
-    [:p "Target Demographic: Children, Adults"]]))
+    [:p "Discover our products."]]))
 
 (def not-found
   (page-template
    [:main
-    [:h1 "404"]
-    [:p "Not found"]]))
+    [:p "404 - Not found"]]))
 
 (defn products []
   (page-template
    [:main
-    [:h1 "Products"]
+    [:div {:id "categories-list"
+           :hx-get "http://localhost:3000/categories/list"
+           :hx-trigger "load"
+           :hx-target "this"
+           :hx-swap "outterHTML"}]
     [:div {:id "products-list"
            :hx-get "http://localhost:3000/products/list"
            :hx-trigger "load"
            :hx-target "this"
-           :hx-swap "outerHTML"}]]))
+           :hx-swap "outterHTML"}]]))
 
-(defn product-item [{:keys [name description price]}]
-  [:a {:href "/" :style "display: block; background-color: #f1f1f1; padding: 0.5rem;"}
-   [:h2 name]
+(defn label [label]
+  [:a {:style "background-color: #f1f1f1; padding: 0.25rem 0.5rem;"
+       :hx-get (str "http://localhost:3000/products/list?categories=" label)
+       :hx-trigger "click"
+       :hx-target "#products-list"
+       :hx-swap "outterHTML"}
+   label])
+
+(defn product-item [{:keys [name description price categories]}]
+  [:div {:style "display: flex; flex-direction: column; gap:0.5rem; align-items: start; background-color: #e1e1e1; padding: 0.5rem;"}
+   [:a {:href "/"} name]
    [:p description]
-   [:span price]])
+   [:span price]
+   [:div {:style "display: flex; gap: 0.5rem; flex-wrap: wrap;"}
+    (for [category categories]
+      (label category))]])
 
 (defn product-list-items [products]
-  (h/html
+  (html
    [:div {:style "display: flex; flex-direction: column; gap: 0.25rem; padding: 0.5rem 0;"}
     (for [product products]
       (product-item product))]))
+
+(defn category-list-items [categories]
+  (html
+   [:div
+    [:div {:style "display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.5rem 0;"
+           :id "category-form"
+           :hx-target "#products-list"}
+     (for [category categories]
+       (let [category-name (:name category)]
+         [:div {:style "background-color: #f1f1f1; padding: 0.25rem 0.5rem;"}
+          [:input {:style "display: none;"
+                   :type "checkbox"
+                   :name "categories"
+                   :value category-name
+                   :id category-name}]
+          [:label {:for category-name} category-name]]))]
+    [:script "" "
+document.addEventListener('click', function(e) {
+    if (e.target.matches('#category-form input[type=\"checkbox\"]')) {
+        let form = document.getElementById('category-form');
+        let selectedCategories = Array.from(form.querySelectorAll('input[type=\"checkbox\"]:checked')).map(checkbox => checkbox.value);
+        let queryString = selectedCategories.length > 0 ? '?categories=' + selectedCategories.join(',') : '';
+        form.setAttribute('hx-get', `http://localhost:3000/products/list${queryString}`);
+        htmx.ajax('GET', form.getAttribute(\"hx-get\"), form.getAttribute(\"hx-target\"));
+        if (e.target.checked) {
+            e.target.parentElement.style.backgroundColor = '#e1e1e1';
+        } else {
+            e.target.parentElement.style.backgroundColor = '#f1f1f1';
+        }
+    }
+});
+  " ""]]))

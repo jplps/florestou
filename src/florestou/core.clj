@@ -28,9 +28,9 @@
 (comment
   ;; Evaluate the do block below to start the system.
   ;; Reevaluate it to restart it quickly.
-  (do   (java.util.TimeZone/setDefault (java.util.TimeZone/getTimeZone "UTC"))
-        (load-file "src/florestou/core.clj")
-        (alter-var-root #'system component/stop)
-        (alter-var-root #'system (constantly (base-system)))
-        (alter-var-root #'system component/start)
-        nil))
+  (do (java.util.TimeZone/setDefault (java.util.TimeZone/getTimeZone "UTC"))
+      (load-file "src/florestou/core.clj")
+      (alter-var-root #'system component/stop)
+      (alter-var-root #'system (constantly (base-system)))
+      (alter-var-root #'system component/start)
+      nil))

@@ -2,12 +2,23 @@
   (:require [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
             [clojure.walk :as walk]
-            [florestou.helpers :refer [load-config]]))
+            [florestou.helpers :refer [load-config]])
+  (:import [org.postgresql.jdbc PgArray]
+           [java.sql Array]))
 
 (defonce datasource (jdbc/get-datasource (:db-spec (load-config))))
 
+(defn pgarray-to-vector [pgarray]
+  (vec (.getArray pgarray)))
+
 (defn transform-value [value]
   (cond
+    (instance? PgArray value)
+    (pgarray-to-vector value)
+
+    (instance? Array value)
+    (pgarray-to-vector value)
+
     (and (vector? value) (= (first value) 'inst))
     (java.util.Date/from (java.time.Instant/parse (second value)))
 
@@ -24,7 +35,7 @@
        x))
    m))
 
-(defn- transform-result [result]
+(defn transform-result [result]
   (cond
     (map? result) (transform-map result)
     (vector? result) (mapv transform-map result)
