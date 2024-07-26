@@ -35,6 +35,7 @@
       line-height: 1;
       max-width: 100vw;
       min-height: 100vh;
+      background-color: #e3d4bb;
     }
     main { min-height: 60vh; }
     main * { border-radius: 2px; }
@@ -108,7 +109,7 @@
            :hx-swap "outterHTML"}]]))
 
 (defn label [label]
-  [:a {:style "background-color: #f1f1f1; padding: 0.25rem 0.5rem;"
+  [:a {:style "border: 1px solid #a1a1a1; padding: 0.25rem 0.5rem;"
        :hx-get (str "http://localhost:3000/products/list?categories=" label)
        :hx-trigger "click"
        :hx-target "#products-list"
@@ -116,7 +117,7 @@
    label])
 
 (defn product-item [{:keys [name description price categories]}]
-  [:div {:style "display: flex; flex-direction: column; gap:0.5rem; align-items: start; background-color: #e1e1e1; padding: 0.5rem;"}
+  [:div {:style "display: flex; flex-direction: column; gap:0.5rem; align-items: start; border: 1px solid #c1c1c1; padding: 0.5rem;"}
    [:a {:href "/"} name]
    [:p description]
    [:span price]
@@ -138,7 +139,7 @@
            :hx-target "#products-list"}
      (for [category categories]
        (let [category-name (:name category)]
-         [:div {:style "background-color: #f1f1f1; padding: 0.25rem 0.5rem;"}
+         [:div {:style "border: 1px solid #c1c1c1; padding: 0.25rem 0.5rem;"}
           [:input {:style "display: none;"
                    :type "checkbox"
                    :name "categories"
@@ -154,9 +155,9 @@ document.addEventListener('click', function(e) {
         form.setAttribute('hx-get', `http://localhost:3000/products/list${queryString}`);
         htmx.ajax('GET', form.getAttribute(\"hx-get\"), form.getAttribute(\"hx-target\"));
         if (e.target.checked) {
-            e.target.parentElement.style.backgroundColor = '#e1e1e1';
+            e.target.parentElement.style.backgroundColor = '#c1c1c1';
         } else {
-            e.target.parentElement.style.backgroundColor = '#f1f1f1';
+            e.target.parentElement.style.backgroundColor = 'unset';
         }
     }
 });

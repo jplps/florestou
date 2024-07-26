@@ -10,7 +10,8 @@
   (update-product-by-id! [this id data])
   (delete-product-by-id! [this id])
   (create-product-category! [this product-id category-id])
-  (delete-product-category! [this product-id category-id]))
+  (delete-product-category! [this product-id category-id])
+  (get-categories-by-product-id! [this product-id]))
 
 (defrecord ProductRepository []
   PSProtocol
@@ -74,7 +75,14 @@
     (insert! :product_categories {:product_id product-id :category_id category-id}))
 
   (delete-product-category! [_ product-id category-id]
-    (delete! :product_categories {:product_id product-id :category_id category-id})))
+    (delete! :product_categories {:product_id product-id :category_id category-id}))
+
+  (get-categories-by-product-id! [_ product-id]
+    (let [sql-query (str "SELECT c.* FROM categories c
+                          JOIN product_categories pc ON c.id = pc.category_id
+                          WHERE pc.product_id = ?")
+          query-params (into [sql-query] [product-id])]
+      (execute! query-params))))
 
 (defn new-service []
   (->ProductRepository))
