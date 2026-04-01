@@ -1,0 +1,217 @@
+#+TITLE: Florestou
+#+AUTHOR: João Silva
+#+STARTUP: overview
+
+* Overview
+
+Florestou is a product catalogue web application for cosmetics and skincare.
+Built with Clojure, Component, next.jdbc, Ring/Jetty, Hiccup, and HTMX.
+
+Products are organised by categories (many-to-many) and browsable through a
+server-rendered UI with HTMX-driven filtering.
+
+* Architecture
+
+The project follows a *hexagonal architecture* (ports & adapters).
+
+The domain defines *ports* — protocols that declare what operations exist without
+specifying how they are fulfilled. *Adapters* implement those ports for a
+concrete technology (PostgreSQL in this case). The HTTP layer and tests depend
+only on the ports, never on the adapters directly. The adapter is wired once in
+the system map via Component.
+
+#+begin_example
+    Driving side                    Core                     Driven side
+  ┌────────────┐            ┌────────────────┐           ┌──────────────┐
+  │ HTTP/Jetty │──calls──▶  │  Ports         │  ◀──impl──│  PostgreSQL  │
+  │  (adapter) │            │  (protocols)   │           │  (adapter)   │
+  └────────────┘            └────────────────┘           └──────┬───────┘
+                                                                │
+                                                         ┌──────┴───────┐
+                                                         │  Database    │
+                                                         │  HikariCP    │
+                                                         └──────────────┘
+#+end_example
+
+Swapping PostgreSQL for another store means writing a new adapter that satisfies
+the same port protocols — no changes to the HTTP layer or domain logic.
+
+** Component graph
+
+#+begin_example
+                 ┌────────────┐
+                 │ HTTP/Jetty │  :http-server (port 3000)
+                 └──────┬─────┘
+                        │
+             ┌──────────┴─────────┐
+             │                    │
+    ┌────────┴─────────┐   ┌──────┴────────────┐
+    │ ProductRepo (pg) │   │ CategoryRepo (pg) │
+    └────────┬─────────┘   └──────┬────────────┘
+             │                    │
+             └─────────┬──────────┘
+                       │
+                ┌──────┴─────┐
+                │  Database  │  HikariCP + PostgreSQL
+                └────────────┘
+#+end_example
+
+Dependency graph managed by =com.stuartsierra/component=.
+
+** Source layout
+
+| Path                                          | Layer   | Purpose                         |
+|-----------------------------------------------+---------+---------------------------------|
+| =src/florestou/core.clj=                      | System  | System map, =-main= entry point |
+| =src/florestou/helpers.clj=                   | System  | Config loader (env overrides)   |
+| =src/florestou/db/core.clj=                   | Infra   | Database component (HikariCP)   |
+| =src/florestou/db/migrations.clj=             | Infra   | DDL migrations and seed data    |
+| =src/florestou/db/helpers.clj=                | Infra   | JDBC convenience functions      |
+| =src/florestou/domains/product/port.clj=      | Port    | ProductPort protocol            |
+| =src/florestou/domains/product/postgres.clj=  | Adapter | PostgreSQL implementation + SQL |
+| =src/florestou/domains/category/port.clj=     | Port    | CategoryPort protocol           |
+| =src/florestou/domains/category/postgres.clj= | Adapter | PostgreSQL implementation + SQL |
+| =src/florestou/http/core.clj=                 | Adapter | Ring/Jetty server component     |
+| =src/florestou/http/routes.clj=               | Adapter | Route dispatch and handlers     |
+| =src/florestou/http/pages/common.clj=         | Adapter | CSS, layout, site info          |
+| =src/florestou/http/pages/home.clj=           | Adapter | Index and 404 pages             |
+| =src/florestou/http/pages/product.clj=        | Adapter | Product cards and list          |
+| =src/florestou/http/pages/category.clj=       | Adapter | Category filters + JS           |
+| =dev/user.clj=                                | Dev     | REPL dev tooling                |
+
+* Prerequisites
+
+- Java 17+
+- Clojure CLI (=clj= / =clojure=)
+- Docker & Docker Compose (for PostgreSQL)
+
+* Getting Started
+
+** 1. Start the database
+
+#+begin_src sh
+docker compose up -d
+#+end_src
+
+This starts PostgreSQL 13 on port 5432 with database =florestou=, user =user=, password =password=.
+
+** 2. Start the application
+
+*** Production mode
+
+#+begin_src sh
+clj -M -m florestou.core
+#+end_src
+
+*** REPL mode (recommended for development)
+
+#+begin_src sh
+clj -A:dev
+#+end_src
+
+Then in the REPL:
+
+#+begin_src clojure
+(start)          ;; start the system
+(stop)           ;; stop gracefully
+(halt)           ;; stop and clear the system reference
+(reset)          ;; halt, reload changed namespaces, restart
+#+end_src
+
+The application will be available at [[http://localhost:3000]].
+
+* Configuration
+
+Application config lives in =resources/config.edn=:
+
+#+begin_src clojure
+{:db-spec {:dbtype   "postgresql"
+           :dbname   "florestou"
+           :host     "localhost"
+           :port     5432
+           :user     "user"
+           :password "password"}
+ :http {:port 3000}}
+#+end_src
+
+* Database
+
+** Schema
+
+- =products= — id, name, description, price, created_at, updated_at
+- =categories= — id, name, description, created_at, updated_at
+- =product_categories= — join table (product_id, category_id) with cascade deletes
+
+Migrations run automatically on system start via =florestou.db.migrations/run-migrations=.
+Seed data (20 products, 20 categories, 40+ associations) is inserted via =insert-dummy=
+when the database is started with =seed? true= (production default). Uses =ON CONFLICT DO
+NOTHING= for idempotency.
+
+* HTTP Endpoints
+
+| Method | Path               | Description                              |
+|--------+--------------------+------------------------------------------|
+| GET    | =/health=          | Health check                             |
+| GET    | =/=                | Homepage                                 |
+| GET    | =/products=        | Product showcase page                    |
+| GET    | =/products/list=   | Product cards (HTMX partial, filterable) |
+| GET    | =/categories/list= | Category checkboxes (HTMX partial)       |
+
+Filter products by category via query param: =/products/list?categories=cat1,cat2=.
+
+* Development
+
+** Dev tooling (=dev/user.clj=)
+
+Start a REPL with the =:dev= alias to get =user= namespace auto-loaded:
+
+| Function  | Description                                      |
+|-----------+--------------------------------------------------|
+| =(start)= | Boot the full system                             |
+| =(stop)=  | Graceful shutdown                                |
+| =(halt)=  | Stop + nil out the system var                    |
+| =(reset)= | Halt, reload changed source files, restart fresh |
+
+=reset= uses =clojure.tools.namespace.repl/refresh= scoped to =src/= only.
+
+** Testing
+
+#+begin_src sh
+clj -M:test
+#+end_src
+
+Tests use [[https://github.com/javahippie/clj-test-containers][clj-test-containers]] to spin up an ephemeral PostgreSQL instance per run.
+No external database required for tests.
+
+** Linting
+
+#+begin_src sh
+clj -M:lint
+#+end_src
+
+** Formatting
+
+#+begin_src sh
+clj -M:format
+#+end_src
+
+* Tech Stack
+
+| Library             | Role                     |
+|---------------------+--------------------------|
+| Clojure 1.11        | Language                 |
+| Component 1.1       | Lifecycle & DI           |
+| next.jdbc 1.3       | JDBC wrapper             |
+| HikariCP 5.0        | Connection pooling       |
+| PostgreSQL 42.5     | Database driver          |
+| Ring 1.12           | HTTP abstraction         |
+| Jetty (via Ring)    | HTTP server              |
+| Hiccup 2.0-RC3      | HTML templating          |
+| HTMX                | Dynamic UI (CDN)         |
+| Logback 1.5         | Logging                  |
+| Kaocha              | Test runner              |
+| clj-test-containers | Ephemeral test databases |
+
+* License
+
+All rights reserved.

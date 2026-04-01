@@ -1,9 +1,8 @@
 (ns florestou.containers.postgres
   (:require [next.jdbc :as jdbc]
-            [florestou.db.helpers :refer [datasource]]
             [clj-test-containers.core :as tc]))
 
-(def pg-container
+(defn create-pg-container []
   (tc/create
    {:image-name "postgres:13"
     :exposed-ports [5432]
@@ -26,24 +25,23 @@
 (def ^:dynamic *test-spec* nil)
 
 (defn pg-fixture [f]
-  (let [container (tc/start! pg-container)
+  (let [container (tc/start! (create-pg-container))
         test-spec (pg-test-spec container)
         test-datasource (jdbc/get-datasource test-spec)]
-    (with-redefs [datasource test-datasource]
-      (binding [*test-datasource* test-datasource
-                *test-spec* test-spec]
-        (f)))
-    (tc/stop! container)))
+    (binding [*test-datasource* test-datasource
+              *test-spec* test-spec]
+      (try
+        (f)
+        (finally
+          (tc/stop! container))))))
 
 (defn clear-pg []
-  (when (.getContainerId (:container pg-container))
-    (with-open [conn (jdbc/get-connection
-                      (assoc
-                       (pg-test-spec nil)
-                       :port (.getMappedPort (:container pg-container) 5432)))]
-      (doseq [table ["products" "categories" "product_categories"]]
-        (jdbc/execute-one! conn [(format "TRUNCATE TABLE %s CASCADE" table)])))))
+  (when *test-datasource*
+    (doseq [table ["product_categories" "products" "categories"]]
+      (try
+        (jdbc/execute-one! *test-datasource* [(str "TRUNCATE TABLE " table " CASCADE")])
+        (catch Exception _)))))
 
-(defn clear-pg-fixtures [f]
-  (f)
-  (clear-pg))
+(defn clear-pg-fixture [f]
+  (clear-pg)
+  (f))

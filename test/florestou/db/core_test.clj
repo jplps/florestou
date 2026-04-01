@@ -12,13 +12,14 @@
       (testing "Database starts successfully"
         (let [started-db (component/start db)]
           (is (instance? com.zaxxer.hikari.HikariDataSource (:conn started-db)))
-          (is (= *test-spec* (:db-spec started-db)))))
+          (is (= *test-spec* (:db-spec started-db)))
+          (component/stop started-db)))
 
       (testing "database stops successfully"
         (let [started-db (component/start db)
               stopped-db (component/stop started-db)]
           (is (nil? (:conn stopped-db)))
-          (is (nil? (:db-spec stopped-db))))))))
+          (is (= *test-spec* (:db-spec stopped-db))))))))
 
 (deftest new-database-test
   (testing "creating a new database"
